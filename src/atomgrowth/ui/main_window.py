@@ -1,5 +1,6 @@
 """Main application window with Notion-style layout"""
 
+from pathlib import Path
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QListWidget, QListWidgetItem,
@@ -10,6 +11,8 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
 
 from atomgrowth.signals.app_signals import get_app_signals
+from atomgrowth.core.template_manager import TemplateManager
+from atomgrowth.ui.views.template_list import TemplateListView
 
 
 class SidebarWidget(QWidget):
@@ -111,6 +114,9 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(1200, 800)
         self.resize(1400, 900)
 
+        # Initialize managers
+        self._init_managers()
+
         # Central widget
         central = QWidget()
         central.setObjectName("centralWidget")
@@ -137,17 +143,13 @@ class MainWindow(QMainWindow):
         self.sidebar.navigation_changed.connect(self._on_navigation_changed)
         content_layout.addWidget(self.sidebar)
 
-        # Splitter for resizable content
-        splitter = QSplitter(Qt.Horizontal)
-        splitter.setChildrenCollapsible(False)
-
         # Main content stack
         self.content_stack = QStackedWidget()
         self.content_stack.setObjectName("contentStack")
 
-        # Add placeholder views for each section
+        # Create views
         self.views = {
-            "templates": PlaceholderView("Templates"),
+            "templates": TemplateListView(self.template_manager),
             "experiments": PlaceholderView("Experiments"),
             "samples": PlaceholderView("Samples"),
             "gallery": PlaceholderView("Gallery"),
@@ -156,8 +158,7 @@ class MainWindow(QMainWindow):
         for key, view in self.views.items():
             self.content_stack.addWidget(view)
 
-        splitter.addWidget(self.content_stack)
-        content_layout.addWidget(splitter)
+        content_layout.addWidget(self.content_stack)
 
         main_layout.addWidget(content_area)
 
@@ -168,6 +169,35 @@ class MainWindow(QMainWindow):
 
         # Connect signals
         self._connect_signals()
+
+    def _init_managers(self):
+        """Initialize data managers"""
+        # Get user data directory
+        data_dir = Path.home() / ".atomgrowth" / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        # Template manager
+        templates_file = data_dir / "templates.json"
+        self.template_manager = TemplateManager(storage_path=templates_file)
+
+        # Create a default template if none exist
+        if not self.template_manager.list_templates():
+            self._create_default_templates()
+
+    def _create_default_templates(self):
+        """Create default starter templates"""
+        # Base MoS2 CVD template
+        base = self.template_manager.create_template(
+            name="Base MoS2 CVD",
+            description="Standard CVD synthesis parameters for MoS2"
+        )
+
+        # High temperature variant
+        self.template_manager.create_template(
+            name="High Temp MoS2",
+            parent_id=base.id,
+            description="Higher peak temperature for larger domains"
+        )
 
     def _create_header(self) -> QWidget:
         """Create the header bar"""
@@ -216,3 +246,9 @@ class MainWindow(QMainWindow):
     def _show_status_message(self, message: str, timeout: int):
         """Show a status bar message"""
         self.status_bar.showMessage(message, timeout)
+
+    def closeEvent(self, event):
+        """Handle window close - save data"""
+        # Save templates
+        self.template_manager.save()
+        event.accept()
