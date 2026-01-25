@@ -55,11 +55,15 @@ class Experiment:
     notes: str = ""
     observations: str = ""
 
-    # Links to samples produced
+    # Links to samples produced (legacy, kept for compatibility)
     sample_ids: list[str] = field(default_factory=list)
 
-    # Links to characterization data
+    # Links to characterization data (legacy, kept for compatibility)
     characterization_ids: list[str] = field(default_factory=list)
+
+    # Direct image storage (simplified model)
+    optical_images: list[str] = field(default_factory=list)  # Paths relative to images dir
+    raman_files: list[str] = field(default_factory=list)     # Paths relative to data dir
 
     # Tags
     tags: list[str] = field(default_factory=list)
@@ -81,6 +85,8 @@ class Experiment:
             "observations": self.observations,
             "sample_ids": self.sample_ids,
             "characterization_ids": self.characterization_ids,
+            "optical_images": self.optical_images,
+            "raman_files": self.raman_files,
             "tags": self.tags,
         }
 
@@ -102,6 +108,8 @@ class Experiment:
             observations=data.get("observations", ""),
             sample_ids=data.get("sample_ids", []),
             characterization_ids=data.get("characterization_ids", []),
+            optical_images=data.get("optical_images", []),
+            raman_files=data.get("raman_files", []),
             tags=data.get("tags", []),
         )
 
@@ -142,3 +150,24 @@ class Experiment:
         self.outcome = ExperimentOutcome.FAILED
         if notes:
             self.notes = notes
+
+    # Image and file management helpers
+    def add_optical_image(self, image_path: str) -> None:
+        """Add an optical image path."""
+        if image_path not in self.optical_images:
+            self.optical_images.append(image_path)
+
+    def remove_optical_image(self, image_path: str) -> None:
+        """Remove an optical image path."""
+        if image_path in self.optical_images:
+            self.optical_images.remove(image_path)
+
+    def add_raman_file(self, file_path: str) -> None:
+        """Add a Raman file path."""
+        if file_path not in self.raman_files:
+            self.raman_files.append(file_path)
+
+    def remove_raman_file(self, file_path: str) -> None:
+        """Remove a Raman file path."""
+        if file_path in self.raman_files:
+            self.raman_files.remove(file_path)

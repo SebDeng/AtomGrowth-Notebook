@@ -12,7 +12,9 @@ from PySide6.QtGui import QFont
 
 from atomgrowth.signals.app_signals import get_app_signals
 from atomgrowth.core.template_manager import TemplateManager
+from atomgrowth.core.experiment_manager import ExperimentManager
 from atomgrowth.ui.views.template_list import TemplateListView
+from atomgrowth.ui.views.experiment_list import ExperimentListView
 
 
 class SidebarWidget(QWidget):
@@ -150,7 +152,11 @@ class MainWindow(QMainWindow):
         # Create views
         self.views = {
             "templates": TemplateListView(self.template_manager),
-            "experiments": PlaceholderView("Experiments"),
+            "experiments": ExperimentListView(
+                experiment_manager=self.experiment_manager,
+                template_manager=self.template_manager,
+                images_dir=self.images_dir
+            ),
             "samples": PlaceholderView("Samples"),
             "gallery": PlaceholderView("Gallery"),
         }
@@ -173,12 +179,23 @@ class MainWindow(QMainWindow):
     def _init_managers(self):
         """Initialize data managers"""
         # Get user data directory
-        data_dir = Path.home() / ".atomgrowth" / "data"
-        data_dir.mkdir(parents=True, exist_ok=True)
+        self.data_dir = Path.home() / ".atomgrowth" / "data"
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+
+        # Images directory
+        self.images_dir = self.data_dir / "images"
+        self.images_dir.mkdir(parents=True, exist_ok=True)
 
         # Template manager
-        templates_file = data_dir / "templates.json"
+        templates_file = self.data_dir / "templates.json"
         self.template_manager = TemplateManager(storage_path=templates_file)
+
+        # Experiment manager
+        experiments_file = self.data_dir / "experiments.json"
+        self.experiment_manager = ExperimentManager(
+            storage_path=experiments_file,
+            images_dir=self.images_dir
+        )
 
         # Create a default template if none exist
         if not self.template_manager.list_templates():
@@ -251,4 +268,6 @@ class MainWindow(QMainWindow):
         """Handle window close - save data"""
         # Save templates
         self.template_manager.save()
+        # Save experiments
+        self.experiment_manager.save()
         event.accept()
